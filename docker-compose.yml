@@ -1,0 +1,25 @@
+services:
+  kaggle-lab:
+    build: .
+    image: kaggle-template
+    container_name: kaggle_lab
+    volumes:
+      - .:/kaggle/working
+      - ./input:/kaggle/input
+      - ./configs:/kaggle/working/configs
+      - ./src:/kaggle/working/src
+      # Kaggle API credentials
+      # ローカルの ~/.kaggle/kaggle.json がある場合
+      # - ~/.kaggle/kaggle.json:/root/.kaggle/kaggle.json:ro
+      # または .env を使う場合
+      - .env:/kaggle/working/.env
+    ports:
+      - "8888:8888"
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+      # Kaggle環境変数の再現が必要なら追加
+    shm_size: '8gb' # ML系タスクのために共有メモリを増やす
+    stdin_open: true
+    tty: true
+    command: jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token=''
+
