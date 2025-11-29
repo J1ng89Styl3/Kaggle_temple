@@ -8,10 +8,6 @@ services:
       - ./input:/kaggle/input
       - ./configs:/kaggle/working/configs
       - ./src:/kaggle/working/src
-      # Kaggle API credentials
-      # ローカルの ~/.kaggle/kaggle.json がある場合
-      # - ~/.kaggle/kaggle.json:/root/.kaggle/kaggle.json:ro
-      # または .env を使う場合
       - .env:/kaggle/working/.env
     ports:
       - "8888:8888"
