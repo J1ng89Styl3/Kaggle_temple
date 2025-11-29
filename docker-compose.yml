@@ -11,6 +11,8 @@ services:
       - .env:/kaggle/working/.env
     ports:
       - "8888:8888"
+    env_file:
+      - .env
     environment:
       - JUPYTER_ENABLE_LAB=yes
       # Kaggle環境変数の再現が必要なら追加

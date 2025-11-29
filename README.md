@@ -1,63 +1,75 @@
 # Kaggle Template
 
-Kaggle のタブular コンペをすぐ始められる軽量テンプレートです。
+Kaggle コンペティション用テンプレート（Docker / Kaggle 公式イメージ対応）
+
+## 特徴
+- **Kaggle Notebook 環境の完全再現**: 公式 Docker イメージを使用。
+- **簡単な環境構築**: `docker-compose up -d` だけで Jupyter Lab が起動。
+- **認証の簡略化**: `.env` ファイルのみで Kaggle API 認証を管理（`kaggle.json` ファイル管理不要）。
+- **Code Competition 対応**: ローカルの Notebook をコマンド一発で Kaggle にアップロード・実行・提出可能。
 
 ## セットアップ
-- Python 3.9+ を想定しています。
-- 依存を入れる: `pip install -e .[notebook,viz]`
-- `input/` に `train.csv`, `test.csv`, `sample_submission.csv` を配置。
-- `configs/base.yaml` で `target`, `id_column`, モデル種別などを調整。
 
-### Kaggle API を使う場合（.env 利用）
-- `.env` のみで認証を管理（`~/.kaggle/kaggle.json` 不要）。`cp .env.example .env` して `KAGGLE_USERNAME`, `KAGGLE_KEY`, `KAGGLE_COMPETITION` を記入（`.env` は `.gitignore` 済み）。
-- `scripts/kaggle.sh` が `.env` を読み込んで `kaggle` CLI を実行:
-  - データ取得: `./scripts/kaggle.sh competitions download -c $KAGGLE_COMPETITION -p input` → zip 展開後、CSV を `input/` に置く。
-  - 提出: `./scripts/kaggle.sh competitions submit -c $KAGGLE_COMPETITION -f artifacts/submission.csv -m "first try"`
+### 1. 前提条件
+- Docker / Docker Compose がインストールされていること。
+- Kaggle アカウントと API トークンを持っていること。
 
-## 主要コマンド
-- 学習 + クロスバリデーション: `python -m src.train --config configs/base.yaml`
-- 推論 + 提出ファイル生成: `python -m src.predict --config configs/base.yaml --model artifacts/model.joblib`
+### 2. プロジェクトの準備
+```bash
+# .envファイルの作成
+cp .env.example .env
+```
 
-## Docker で動かす場合
-Kaggle Notebook とほぼ同等の環境（公式イメージ利用）を再現します。
+`.env` を編集し、Kaggle の認証情報とコンペ名を入力します。
+**注意**: `KAGGLE_KEY` は `kaggle.json` の中身の文字列をそのまま使用してください（`KGAT_` などの接頭辞は不要な場合があります）。
 
-1. ビルド & 起動:
-   ```bash
-   docker-compose up -d
-   ```
-   ※ 初回は Kaggle 公式イメージ（約18GB〜）をプルするため、時間がかかります。
+```bash
+KAGGLE_USERNAME=your_username
+KAGGLE_KEY=xxxxxxxxxxxxxx
+KAGGLE_COMPETITION=santa-2025
+```
 
-2. Jupyter Lab にアクセス:
-   ブラウザで `http://localhost:8888` を開きます。パスワード/トークンは不要に設定されています。
+### 3. 起動
+```bash
+docker-compose up -d
+```
+※ 初回は Kaggle 公式イメージ（約18GB）をプルするため時間がかかります。
 
-3. コンテナ内での操作:
-   ```bash
-   # シェルに入る
-   docker-compose exec kaggle-lab bash
-   ```
-   
-   コンテナ内のパス構成:
-   - `/kaggle/working`: プロジェクトルート（ローカルのファイルをマウント）
-   - `/kaggle/input`: データディレクトリ（ローカルの `input/` をマウント）
+### 4. Jupyter Lab へのアクセス
+ブラウザで `http://localhost:8888` を開きます。
 
-   コマンド例:
-   ```bash
-   # 学習
-   python -m src.train --config configs/base.yaml
-   
-   # 提出 (kaggleコマンドはプリインストール済み、.envの認証情報を利用)
-   ./scripts/kaggle.sh competitions submit -c $KAGGLE_COMPETITION -f artifacts/submission.csv -m "message"
-   ```
+## 使い方
+
+### コンテナ内での操作（推奨）
+シェルに入る必要はなく、`docker-compose exec` 経由でコマンドを実行できます。
+
+#### データのダウンロード
+```bash
+# input/ フォルダにデータセットをダウンロード
+docker-compose exec kaggle-lab ./scripts/kaggle.sh competitions download -c $KAGGLE_COMPETITION -p input --unzip
+```
+
+#### Notebook のアップロード & 実行 (Code Competition 提出)
+ローカルの Notebook を Kaggle 上で実行（Push）し、提出可能な状態にします。
+```bash
+# Usage: ./scripts/push_kernel.sh [Notebookパス] [URLスラッグ]
+./scripts/push_kernel.sh notebooks/santa2025-ver2.ipynb santa-2025-ver2
+```
+実行後、表示される URL にアクセスし、完了後に "Submit" ボタンを押してください。
+
+#### 直接コマンドで提出（CSV提出の場合）
+```bash
+docker-compose exec kaggle-lab ./scripts/kaggle.sh competitions submit -c $KAGGLE_COMPETITION -f submission.csv -m "message"
+```
 
 ## ディレクトリ構成
-- `configs/` : 設定ファイル（`base.yaml`）
-- `src/` : 学習・推論用モジュール（`train.py`, `predict.py` など）
-- `input/` : Kaggle のデータを置く場所
-- `notebooks/` : EDA や実験用ノートブック
-- `artifacts/` : 学習済みモデル・提出 CSV（`.gitignore` 済み）
+- `configs/` : 設定ファイル
+- `src/` : ソースコード
+- `input/` : データセット（`/kaggle/input` にマウント）
+- `notebooks/` : Notebook
+- `scripts/` : ユーティリティスクリプト
+- `artifacts/` : 生成物（モデル、提出ファイル等）
 
-## フローの例
-1. `input/train.csv` を開き、カラム名・ターゲット名を確認
-2. `configs/base.yaml` を更新し、実行: `python -m src.train`
-3. `artifacts/model.joblib` を使って提出ファイル作成: `python -m src.predict`
-4. `artifacts/submission.csv` を Kaggle にアップロード
+## トラブルシューティング
+- **401 Unauthorized**: `.env` の `KAGGLE_USERNAME` / `KAGGLE_KEY` が間違っています。修正後、`docker-compose up -d` で反映させてください。
+- **Mac (Apple Silicon) での警告**: `linux/amd64` イメージを使用しているため、エミュレーション実行となり警告が出ますが、動作に問題はありません（速度はネイティブより遅くなります）。
